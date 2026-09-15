@@ -36,7 +36,8 @@
     <string name="device_admin_explanation">Perlu izin admin perangkat agar aplikasi tidak bisa dihapus langsung tanpa langkah tambahan.</string>
     <string name="device_admin_enabled">Perlindungan uninstall diaktifkan</string>
     <string name="device_admin_disabled">Perlindungan uninstall dinonaktifkan</string>
-        <string name="random_gate_title">Ketik ulang teks acak berikut untuk menonaktifkan pemblokiran:</string>
+           <string name="random_gate_title">Ketik huruf yang tampil di bawah, satu per satu:</string>
     <string name="random_gate_hint">Masukkan teks acak</string>
-    <string name="random_gate_wrong">Teks tidak cocok, pemblokiran tetap aktif</string>
+    <string name="random_gate_wrong">Karakter salah</string>
+    <string name="random_gate_progress">%1$d / %2$d</string>
 </resources>
