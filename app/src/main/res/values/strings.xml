@@ -19,6 +19,9 @@
     <string name="btn_cancel">Batal</string>
 
     <string name="hint_channel_username">Username channel, contoh: @argo</string>
+    <string name="hint_channel_name">Nama tampilan persis, contoh: Bot Berita</string>
+    <string name="type_username">Username</string>
+    <string name="type_channel_name">Nama Tampilan</string>
     <string name="dialog_add_title">Tambah Channel</string>
     <string name="dialog_edit_title">Edit Channel</string>
 
