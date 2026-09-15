@@ -1,5 +1,7 @@
 package com.mas.tgblocker
 
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
@@ -45,6 +47,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
 
+        binding.btnEnableUninstallProtection.setOnClickListener {
+            requestDeviceAdmin()
+        }
+
         refreshList()
     }
 
@@ -52,6 +58,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         refreshList()
         updateServiceStatus()
+        updateUninstallProtectionStatus()
     }
 
     private fun refreshList() {
@@ -129,6 +136,51 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton(R.string.btn_cancel, null)
             .show()
+    }
+
+    // ----- Fitur pencegahan uninstall (Device Admin) -----
+    // Bagian ini sengaja berdiri sendiri, tidak memanggil apa pun dari
+    // BlockedChannelRepository / AccessibilityService, supaya fitur
+    // pemblokiran channel yang sudah berjalan tidak ikut terdampak.
+
+    private fun getDevicePolicyManager(): DevicePolicyManager =
+        getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+
+    private fun getAdminComponent(): ComponentName =
+        ComponentName(this, TgBlockerDeviceAdminReceiver::class.java)
+
+    private fun isDeviceAdminActive(): Boolean {
+        return try {
+            getDevicePolicyManager().isAdminActive(getAdminComponent())
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun updateUninstallProtectionStatus() {
+        val active = isDeviceAdminActive()
+        binding.tvUninstallProtectionStatus.text = if (active) {
+            getString(R.string.uninstall_protection_active)
+        } else {
+            getString(R.string.uninstall_protection_inactive)
+        }
+        binding.tvUninstallProtectionStatus.setTextColor(
+            resources.getColor(if (active) R.color.accent else R.color.danger, theme)
+        )
+        binding.btnEnableUninstallProtection.visibility =
+            if (active) android.view.View.GONE else android.view.View.VISIBLE
+    }
+
+    private fun requestDeviceAdmin() {
+        if (isDeviceAdminActive()) return
+        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, getAdminComponent())
+            putExtra(
+                DevicePolicyManager.EXTRA_ADD_EXPLANATION,
+                getString(R.string.device_admin_explanation)
+            )
+        }
+        startActivity(intent)
     }
 
     private fun deleteChannel(channel: BlockedChannel) {
