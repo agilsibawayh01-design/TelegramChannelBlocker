@@ -9,8 +9,8 @@ import kotlin.random.Random
  */
 object RandomTextGate {
 
-    private const val CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-    private const val LENGTH = 140
+    private const val CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    private const val LENGTH = 512
 
     fun generate(): String {
         val sb = StringBuilder(LENGTH)
