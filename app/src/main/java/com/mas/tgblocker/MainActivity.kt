@@ -104,9 +104,32 @@ class MainActivity : AppCompatActivity() {
         return false
     }
 
+    /** Set hint pada input sesuai tipe yang dipilih, dan hubungkan RadioGroup ke perubahan hint. */
+    private fun setupChannelTypeRadio(dialogView: android.view.View) {
+        val radioGroup = dialogView.findViewById<android.widget.RadioGroup>(R.id.radioChannelType)
+        val tilUsername = dialogView.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.tilUsername)
+        radioGroup.setOnCheckedChangeListener { _, checkedId ->
+            tilUsername.hint = if (checkedId == R.id.radioChannelName) {
+                getString(R.string.hint_channel_name)
+            } else {
+                getString(R.string.hint_channel_username)
+            }
+        }
+    }
+
+    private fun selectedType(dialogView: android.view.View): ChannelType {
+        val radioGroup = dialogView.findViewById<android.widget.RadioGroup>(R.id.radioChannelType)
+        return if (radioGroup.checkedRadioButtonId == R.id.radioChannelName) {
+            ChannelType.NAME
+        } else {
+            ChannelType.USERNAME
+        }
+    }
+
     private fun showAddDialog() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_channel, null)
         val etUsername = dialogView.findViewById<TextInputEditText>(R.id.etUsername)
+        setupChannelTypeRadio(dialogView)
 
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.dialog_add_title)
@@ -117,7 +140,7 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, R.string.toast_invalid_username, Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
-                val added = repository.addChannel(input)
+                val added = repository.addChannel(selectedType(dialogView), input)
                 if (!added) {
                     Toast.makeText(this, R.string.toast_duplicate, Toast.LENGTH_SHORT).show()
                 }
@@ -130,7 +153,10 @@ class MainActivity : AppCompatActivity() {
     private fun showEditDialog(channel: BlockedChannel) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_channel, null)
         val etUsername = dialogView.findViewById<TextInputEditText>(R.id.etUsername)
-        etUsername.setText(channel.username)
+        val radioGroup = dialogView.findViewById<android.widget.RadioGroup>(R.id.radioChannelType)
+        setupChannelTypeRadio(dialogView)
+        etUsername.setText(channel.value)
+        radioGroup.check(if (channel.type == ChannelType.NAME) R.id.radioChannelName else R.id.radioUsername)
 
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.dialog_edit_title)
@@ -141,7 +167,7 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, R.string.toast_invalid_username, Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
-                repository.updateChannel(channel.username, input)
+                repository.updateChannel(channel, selectedType(dialogView), input)
                 refreshList()
             }
             .setNegativeButton(R.string.btn_cancel, null)
@@ -217,10 +243,9 @@ class MainActivity : AppCompatActivity() {
     /**
      * Gate teks acak generic: dipakai untuk menonaktifkan pemblokiran,
      * mengedit channel, dan menghapus channel. [onSuccess] hanya dipanggil
-     * kalau pengguna berhasil mengetik ulang 512 karakter satu-per-satu
-     * dengan benar. Kalau salah 1 karakter, progress mundur 10 langkah
-     * (bukan diam di tempat, bukan juga reset total ke 0). Tidak bisa
-     * paste, dan layar tidak bisa di-screenshot selama dialog terbuka.
+     * kalau pengguna berhasil mengetik ulang teks acak 512 karakter PERSIS,
+     * divalidasi karakter demi karakter (tidak bisa tempel/paste, dan
+     * layar tidak bisa di-screenshot selama dialog ini terbuka).
      */
     private fun showRandomTextGate(onSuccess: () -> Unit) {
         val target = RandomTextGate.generate()
@@ -297,7 +322,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle(R.string.btn_delete)
             .setMessage(channel.display())
             .setPositiveButton(R.string.btn_delete) { _, _ ->
-                repository.deleteChannel(channel.username)
+                repository.deleteChannel(channel)
                 refreshList()
                 Toast.makeText(this, R.string.toast_deleted, Toast.LENGTH_SHORT).show()
             }
