@@ -1,0 +1,146 @@
+package com.mas.tgblocker
+
+import android.content.Intent
+import android.os.Bundle
+import android.provider.Settings
+import android.text.TextUtils
+import android.view.LayoutInflater
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.mas.tgblocker.databinding.ActivityMainBinding
+
+class MainActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var repository: BlockedChannelRepository
+    private lateinit var adapter: ChannelAdapter
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        repository = BlockedChannelRepository(this)
+
+        setSupportActionBar(binding.toolbar)
+
+        adapter = ChannelAdapter(
+            onEdit = { channel -> showEditDialog(channel) },
+            onDelete = { channel -> deleteChannel(channel) }
+        )
+        binding.rvChannels.layoutManager = LinearLayoutManager(this)
+        binding.rvChannels.adapter = adapter
+
+        binding.switchEnabled.isChecked = repository.isBlockingEnabled()
+        binding.switchEnabled.setOnCheckedChangeListener { _, isChecked ->
+            repository.setBlockingEnabled(isChecked)
+        }
+
+        binding.fabAdd.setOnClickListener { showAddDialog() }
+
+        binding.tvServiceInstructions.setOnClickListener {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
+
+        refreshList()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshList()
+        updateServiceStatus()
+    }
+
+    private fun refreshList() {
+        val channels = repository.getChannels()
+        adapter.submitList(channels)
+        binding.tvEmpty.visibility = if (channels.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+    }
+
+    private fun updateServiceStatus() {
+        val enabled = isAccessibilityServiceEnabled()
+        binding.tvServiceStatus.text = if (enabled) {
+            getString(R.string.service_active)
+        } else {
+            getString(R.string.service_inactive)
+        }
+        binding.tvServiceStatus.setTextColor(
+            resources.getColor(if (enabled) R.color.accent else R.color.danger, theme)
+        )
+    }
+
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        val expectedComponent = "$packageName/${TelegramBlockAccessibilityService::class.java.canonicalName}"
+        val enabledServices = Settings.Secure.getString(
+            contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+
+        val splitter = TextUtils.SimpleStringSplitter(':')
+        splitter.setString(enabledServices)
+        for (component in splitter) {
+            if (component.equals(expectedComponent, ignoreCase = true)) return true
+        }
+        return false
+    }
+
+    private fun showAddDialog() {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_channel, null)
+        val etUsername = dialogView.findViewById<TextInputEditText>(R.id.etUsername)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.dialog_add_title)
+            .setView(dialogView)
+            .setPositiveButton(R.string.btn_save) { _, _ ->
+                val input = etUsername.text?.toString().orEmpty()
+                if (input.trim().removePrefix("@").isBlank()) {
+                    Toast.makeText(this, R.string.toast_invalid_username, Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                val added = repository.addChannel(input)
+                if (!added) {
+                    Toast.makeText(this, R.string.toast_duplicate, Toast.LENGTH_SHORT).show()
+                }
+                refreshList()
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+
+    private fun showEditDialog(channel: BlockedChannel) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_channel, null)
+        val etUsername = dialogView.findViewById<TextInputEditText>(R.id.etUsername)
+        etUsername.setText(channel.username)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.dialog_edit_title)
+            .setView(dialogView)
+            .setPositiveButton(R.string.btn_save) { _, _ ->
+                val input = etUsername.text?.toString().orEmpty()
+                if (input.trim().removePrefix("@").isBlank()) {
+                    Toast.makeText(this, R.string.toast_invalid_username, Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                repository.updateChannel(channel.username, input)
+                refreshList()
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+
+    private fun deleteChannel(channel: BlockedChannel) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.btn_delete)
+            .setMessage(channel.display())
+            .setPositiveButton(R.string.btn_delete) { _, _ ->
+                repository.deleteChannel(channel.username)
+                refreshList()
+                Toast.makeText(this, R.string.toast_deleted, Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+}

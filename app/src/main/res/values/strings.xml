@@ -1,0 +1,32 @@
+<resources>
+    <string name="app_name">Telegram Channel Blocker</string>
+    <string name="accessibility_service_description">Membaca tampilan aplikasi Telegram untuk mendeteksi dan memblokir channel yang ada dalam daftar blokir Anda. Tidak membaca atau mengubah aplikasi lain.</string>
+
+    <string name="status_active">AKTIF</string>
+    <string name="status_inactive">NONAKTIF</string>
+    <string name="service_active">Aktif</string>
+    <string name="service_inactive">Belum aktif</string>
+
+    <string name="label_status">Status Pemblokiran</string>
+    <string name="label_service">Accessibility Service</string>
+    <string name="label_blocked_list">Daftar Channel yang Diblokir</string>
+
+    <string name="btn_add_channel">+ Tambah Channel</string>
+    <string name="btn_edit">Edit</string>
+    <string name="btn_delete">Hapus</string>
+    <string name="btn_enable_service">Aktifkan Accessibility Service</string>
+    <string name="btn_save">Simpan</string>
+    <string name="btn_cancel">Batal</string>
+
+    <string name="hint_channel_username">Username channel, contoh: @argo</string>
+    <string name="dialog_add_title">Tambah Channel</string>
+    <string name="dialog_edit_title">Edit Channel</string>
+
+    <string name="empty_list">Belum ada channel yang diblokir</string>
+
+    <string name="service_instructions">Untuk mulai memblokir, aktifkan layanan aksesibilitas aplikasi ini di:\nSetelan → Aksesibilitas → Telegram Channel Blocker → Aktifkan.</string>
+
+    <string name="toast_invalid_username">Username tidak valid. Gunakan format @namachannel</string>
+    <string name="toast_duplicate">Channel ini sudah ada di daftar</string>
+    <string name="toast_deleted">Channel dihapus</string>
+</resources>
