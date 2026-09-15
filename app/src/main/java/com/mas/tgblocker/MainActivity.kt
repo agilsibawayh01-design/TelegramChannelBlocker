@@ -5,8 +5,14 @@ import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
+import android.text.Editable
 import android.text.TextUtils
+import android.text.TextWatcher
+import android.view.ActionMode
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuItem
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -30,8 +36,8 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
 
         adapter = ChannelAdapter(
-            onEdit = { channel -> showEditDialog(channel) },
-            onDelete = { channel -> deleteChannel(channel) }
+            onEdit = { channel -> showRandomTextGate { showEditDialog(channel) } },
+            onDelete = { channel -> showRandomTextGate { deleteChannel(channel) } }
         )
         binding.rvChannels.layoutManager = LinearLayoutManager(this)
         binding.rvChannels.adapter = adapter
@@ -195,33 +201,77 @@ class MainActivity : AppCompatActivity() {
             binding.switchEnabled.setOnCheckedChangeListener(null)
             binding.switchEnabled.isChecked = true
             binding.switchEnabled.setOnCheckedChangeListener { _, checked -> onSwitchToggled(checked) }
-            showRandomTextGate()
+            showRandomTextGate {
+                binding.switchEnabled.setOnCheckedChangeListener(null)
+                binding.switchEnabled.isChecked = false
+                binding.switchEnabled.setOnCheckedChangeListener { _, checked -> onSwitchToggled(checked) }
+                repository.setBlockingEnabled(false)
+            }
         }
     }
 
-    private fun showRandomTextGate() {
+    /**
+     * Gate teks acak generic: dipakai untuk menonaktifkan pemblokiran,
+     * mengedit channel, dan menghapus channel. [onSuccess] hanya dipanggil
+     * kalau pengguna berhasil mengetik ulang teks acak 512 karakter PERSIS,
+     * divalidasi karakter demi karakter (tidak bisa tempel/paste, dan
+     * layar tidak bisa di-screenshot selama dialog ini terbuka).
+     */
+    private fun showRandomTextGate(onSuccess: () -> Unit) {
         val target = RandomTextGate.generate()
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_random_gate, null)
         val tvRandomText = dialogView.findViewById<android.widget.TextView>(R.id.tvRandomText)
+        val tvError = dialogView.findViewById<android.widget.TextView>(R.id.tvGateError)
         val etInput = dialogView.findViewById<TextInputEditText>(R.id.etRandomTextInput)
         tvRandomText.text = target
 
-        MaterialAlertDialogBuilder(this)
+        // Matikan menu copy/paste/select di kolom input, supaya tidak bisa
+        // tempel teks yang didapat dari luar (misal hasil bantuan AI lain).
+        val disabledActionMode = object : ActionMode.Callback {
+            override fun onCreateActionMode(mode: ActionMode?, menu: Menu?) = false
+            override fun onPrepareActionMode(mode: ActionMode?, menu: Menu?) = false
+            override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?) = false
+            override fun onDestroyActionMode(mode: ActionMode?) {}
+        }
+        etInput.customSelectionActionModeCallback = disabledActionMode
+        etInput.isLongClickable = false
+
+        val dialog = MaterialAlertDialogBuilder(this)
             .setView(dialogView)
-            .setPositiveButton(R.string.btn_save) { _, _ ->
-                val typed = etInput.text?.toString().orEmpty()
-                if (typed == target) {
-                    binding.switchEnabled.setOnCheckedChangeListener(null)
-                    binding.switchEnabled.isChecked = false
-                    binding.switchEnabled.setOnCheckedChangeListener { _, checked -> onSwitchToggled(checked) }
-                    repository.setBlockingEnabled(false)
-                } else {
-                    Toast.makeText(this, R.string.random_gate_wrong, Toast.LENGTH_SHORT).show()
-                }
-            }
             .setNegativeButton(R.string.btn_cancel, null)
             .setCancelable(false)
-            .show()
+            .create()
+
+        // Cegah screenshot & perekaman layar selama dialog ini tampil.
+        dialog.window?.setFlags(
+            WindowManager.LayoutParams.FLAG_SECURE,
+            WindowManager.LayoutParams.FLAG_SECURE
+        )
+
+        etInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun afterTextChanged(s: Editable?) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val typed = s?.toString().orEmpty()
+                if (typed.isEmpty()) {
+                    tvError.visibility = android.view.View.GONE
+                    return
+                }
+                val expectedPrefix = target.substring(0, minOf(typed.length, target.length))
+                if (typed != expectedPrefix) {
+                    tvError.visibility = android.view.View.VISIBLE
+                    etInput.setText("")
+                    return
+                }
+                tvError.visibility = android.view.View.GONE
+                if (typed.length == target.length) {
+                    dialog.dismiss()
+                    onSuccess()
+                }
+            }
+        })
+
+        dialog.show()
     }
 
     private fun deleteChannel(channel: BlockedChannel) {
