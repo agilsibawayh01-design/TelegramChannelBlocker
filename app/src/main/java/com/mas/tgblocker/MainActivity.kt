@@ -26,6 +26,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var repository: BlockedChannelRepository
     private lateinit var adapter: ChannelAdapter
 
+    companion object {
+        private const val PENALTY_STEPS = 10
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -213,20 +217,29 @@ class MainActivity : AppCompatActivity() {
     /**
      * Gate teks acak generic: dipakai untuk menonaktifkan pemblokiran,
      * mengedit channel, dan menghapus channel. [onSuccess] hanya dipanggil
-     * kalau pengguna berhasil mengetik ulang teks acak 512 karakter PERSIS,
-     * divalidasi karakter demi karakter (tidak bisa tempel/paste, dan
-     * layar tidak bisa di-screenshot selama dialog ini terbuka).
+     * kalau pengguna berhasil mengetik ulang 512 karakter satu-per-satu
+     * dengan benar. Kalau salah 1 karakter, progress mundur 10 langkah
+     * (bukan diam di tempat, bukan juga reset total ke 0). Tidak bisa
+     * paste, dan layar tidak bisa di-screenshot selama dialog terbuka.
      */
     private fun showRandomTextGate(onSuccess: () -> Unit) {
         val target = RandomTextGate.generate()
+        var currentIndex = 0
+
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_random_gate, null)
-        val tvRandomText = dialogView.findViewById<android.widget.TextView>(R.id.tvRandomText)
+        val tvCurrentChar = dialogView.findViewById<android.widget.TextView>(R.id.tvRandomText)
+        val tvProgress = dialogView.findViewById<android.widget.TextView>(R.id.tvGateProgress)
         val tvError = dialogView.findViewById<android.widget.TextView>(R.id.tvGateError)
         val etInput = dialogView.findViewById<TextInputEditText>(R.id.etRandomTextInput)
-        tvRandomText.text = target
 
-        // Matikan menu copy/paste/select di kolom input, supaya tidak bisa
-        // tempel teks yang didapat dari luar (misal hasil bantuan AI lain).
+        fun showChar(index: Int) {
+            tvCurrentChar.text = target[index].toString()
+            tvProgress.text = getString(R.string.random_gate_progress, index + 1, target.length)
+        }
+        showChar(currentIndex)
+
+        // Matikan menu copy/paste/select, supaya tidak bisa tempel karakter
+        // dari luar (misal hasil bantuan AI lain).
         val disabledActionMode = object : ActionMode.Callback {
             override fun onCreateActionMode(mode: ActionMode?, menu: Menu?) = false
             override fun onPrepareActionMode(mode: ActionMode?, menu: Menu?) = false
@@ -253,20 +266,25 @@ class MainActivity : AppCompatActivity() {
             override fun afterTextChanged(s: Editable?) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 val typed = s?.toString().orEmpty()
-                if (typed.isEmpty()) {
+                if (typed.isEmpty()) return
+
+                val typedChar = typed[0]
+                if (typedChar == target[currentIndex]) {
                     tvError.visibility = android.view.View.GONE
-                    return
-                }
-                val expectedPrefix = target.substring(0, minOf(typed.length, target.length))
-                if (typed != expectedPrefix) {
+                    currentIndex++
+                    etInput.setText("")
+                    if (currentIndex == target.length) {
+                        dialog.dismiss()
+                        onSuccess()
+                    } else {
+                        showChar(currentIndex)
+                    }
+                } else {
                     tvError.visibility = android.view.View.VISIBLE
                     etInput.setText("")
-                    return
-                }
-                tvError.visibility = android.view.View.GONE
-                if (typed.length == target.length) {
-                    dialog.dismiss()
-                    onSuccess()
+                    // Penalti: mundur 10 langkah (tidak sampai minus / reset total ke 0).
+                    currentIndex = (currentIndex - PENALTY_STEPS).coerceAtLeast(0)
+                    showChar(currentIndex)
                 }
             }
         })
