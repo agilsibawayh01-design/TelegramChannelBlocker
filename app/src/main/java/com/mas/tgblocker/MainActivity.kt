@@ -38,7 +38,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.switchEnabled.isChecked = repository.isBlockingEnabled()
         binding.switchEnabled.setOnCheckedChangeListener { _, isChecked ->
-            repository.setBlockingEnabled(isChecked)
+            onSwitchToggled(isChecked)
         }
 
         binding.fabAdd.setOnClickListener { showAddDialog() }
@@ -181,6 +181,47 @@ class MainActivity : AppCompatActivity() {
             )
         }
         startActivity(intent)
+    }
+
+    // ----- Random text gate untuk menonaktifkan pemblokiran -----
+    // Terpisah dari logic Device Admin dan Accessibility di atas.
+
+    private fun onSwitchToggled(isChecked: Boolean) {
+        if (isChecked) {
+            repository.setBlockingEnabled(true)
+        } else {
+            // Tahan dulu: kembalikan switch ke ON secara visual sampai
+            // pengguna berhasil mengisi teks acak dengan benar.
+            binding.switchEnabled.setOnCheckedChangeListener(null)
+            binding.switchEnabled.isChecked = true
+            binding.switchEnabled.setOnCheckedChangeListener { _, checked -> onSwitchToggled(checked) }
+            showRandomTextGate()
+        }
+    }
+
+    private fun showRandomTextGate() {
+        val target = RandomTextGate.generate()
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_random_gate, null)
+        val tvRandomText = dialogView.findViewById<android.widget.TextView>(R.id.tvRandomText)
+        val etInput = dialogView.findViewById<TextInputEditText>(R.id.etRandomTextInput)
+        tvRandomText.text = target
+
+        MaterialAlertDialogBuilder(this)
+            .setView(dialogView)
+            .setPositiveButton(R.string.btn_save) { _, _ ->
+                val typed = etInput.text?.toString().orEmpty()
+                if (typed == target) {
+                    binding.switchEnabled.setOnCheckedChangeListener(null)
+                    binding.switchEnabled.isChecked = false
+                    binding.switchEnabled.setOnCheckedChangeListener { _, checked -> onSwitchToggled(checked) }
+                    repository.setBlockingEnabled(false)
+                } else {
+                    Toast.makeText(this, R.string.random_gate_wrong, Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .setCancelable(false)
+            .show()
     }
 
     private fun deleteChannel(channel: BlockedChannel) {
