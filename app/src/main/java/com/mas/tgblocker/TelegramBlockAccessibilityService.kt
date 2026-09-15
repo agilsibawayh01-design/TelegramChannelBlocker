@@ -43,16 +43,17 @@ class TelegramBlockAccessibilityService : AccessibilityService() {
         val root = rootInActiveWindow ?: return
 
         try {
-            val texts = ChannelDetector.collectNormalizedTexts(root)
-            if (texts.isEmpty()) return
+            val screenTexts = ChannelDetector.collectTexts(root)
+            if (screenTexts.normalized.isEmpty()) return
 
             val blockedList = repository.getChannels()
 
-            val matchedUsername = ChannelDetector.containsBlockedUsername(texts, blockedList)
-            val matchedArgo = blockedList.any { it.normalized() == "argo" } &&
-                ArgoSearchDetector.isArgoSearchPresent(texts)
+            val matchedUsername = ChannelDetector.containsBlockedUsername(screenTexts.normalized, blockedList)
+            val matchedName = ChannelDetector.containsBlockedChannelName(screenTexts.raw, blockedList)
+            val matchedArgo = blockedList.any { it.type == ChannelType.USERNAME && it.normalized() == "argo" } &&
+                ArgoSearchDetector.isArgoSearchPresent(screenTexts.normalized)
 
-            if (matchedUsername != null || matchedArgo) {
+            if (matchedUsername != null || matchedName != null || matchedArgo) {
                 Log.d(TAG, "Channel diblokir terdeteksi, menjalankan BACK")
                 performGlobalAction(GLOBAL_ACTION_BACK)
             }
