@@ -17,22 +17,50 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp"
-        android:gravity="center_vertical">
+        android:orientation="vertical"
+        android:padding="16dp">
 
         <TextView
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="@string/label_status"
             android:textColor="@color/text_primary"
-            android:textSize="15sp" />
+            android:textSize="15sp"
+            android:layout_marginBottom="8dp" />
 
-        <com.google.android.material.switchmaterial.SwitchMaterial
-            android:id="@+id/switchEnabled"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/toggleMode"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:singleSelection="true"
+            app:selectionRequired="true">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnModeOff"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/mode_off" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnModeNormal"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/mode_normal" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnModeStrict"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/mode_strict" />
+
+        </com.google.android.material.button.MaterialButtonToggleGroup>
+
     </LinearLayout>
 
     <LinearLayout
