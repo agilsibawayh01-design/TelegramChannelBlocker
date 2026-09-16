@@ -5,11 +5,13 @@ import android.content.SharedPreferences
 import org.json.JSONArray
 import org.json.JSONObject
 
+enum class BlockingMode { OFF, NORMAL, STRICT }
+
 /**
- * Menyimpan daftar channel yang diblokir dan status aktif/nonaktif secara lokal
+ * Menyimpan daftar channel yang diblokir dan mode pemblokiran secara lokal
  * di perangkat menggunakan SharedPreferences (tidak ada server/database online).
  *
- * Format: array JSON berisi objek {"type": "USERNAME"|"NAME", "value": "..."}.
+ * Format: array JSON berisi objek {"type": "USERNAME"|"NAME"|"KEYWORD", "value": "..."}.
  * Data lama (array string polos, dari versi sebelum fitur tipe) tetap didukung
  * dan otomatis dikonversi jadi tipe USERNAME saat dibaca.
  */
@@ -18,10 +20,21 @@ class BlockedChannelRepository(context: Context) {
     private val prefs: SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    fun isBlockingEnabled(): Boolean = prefs.getBoolean(KEY_ENABLED, true)
+    fun getMode(): BlockingMode {
+        val stored = prefs.getString(KEY_MODE, null)
+        if (stored != null) {
+            return try {
+                BlockingMode.valueOf(stored)
+            } catch (e: Exception) {
+                BlockingMode.NORMAL
+            }
+        }
+        // Migrasi dari versi lama (boolean on/off): true -> NORMAL, false -> OFF.
+        return if (prefs.getBoolean(KEY_ENABLED_LEGACY, true)) BlockingMode.NORMAL else BlockingMode.OFF
+    }
 
-    fun setBlockingEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_ENABLED, enabled).apply()
+    fun setMode(mode: BlockingMode) {
+        prefs.edit().putString(KEY_MODE, mode.name).apply()
     }
 
     fun getChannels(): List<BlockedChannel> {
@@ -70,7 +83,7 @@ class BlockedChannelRepository(context: Context) {
         val current = getChannels().toMutableList()
         val exists = current.any { existing ->
             existing.type == type && when (type) {
-                ChannelType.USERNAME -> existing.normalized() == clean.lowercase()
+                ChannelType.USERNAME, ChannelType.KEYWORD -> existing.normalized() == clean.lowercase()
                 ChannelType.NAME -> existing.value == clean
             }
         }
@@ -107,7 +120,8 @@ class BlockedChannelRepository(context: Context) {
 
     companion object {
         private const val PREFS_NAME = "tg_blocker_prefs"
-        private const val KEY_ENABLED = "blocking_enabled"
+        private const val KEY_ENABLED_LEGACY = "blocking_enabled"
+        private const val KEY_MODE = "blocking_mode"
         private const val KEY_CHANNELS = "blocked_channels"
     }
 }
