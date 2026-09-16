@@ -97,15 +97,16 @@ object ChannelDetector {
     }
 
     /**
-     * Mengecek apakah salah satu teks di layar PERSIS SAMA (case-sensitive)
-     * dengan nama tampilan yang diblokir.
+     * Mengecek apakah salah satu teks di layar MENGANDUNG nama tampilan yang
+     * diblokir (case-sensitive, tapi boleh ada karakter tambahan di sekitarnya
+     * seperti emoji/ikon status — umum di Telegram, misal "🔴 Infokomando").
      */
     fun containsBlockedChannelName(rawTexts: List<String>, blocked: List<BlockedChannel>): BlockedChannel? {
         val nameEntries = blocked.filter { it.type == ChannelType.NAME }
         for (channel in nameEntries) {
             val target = channel.value.trim()
             if (target.isBlank()) continue
-            if (rawTexts.any { it == target }) {
+            if (rawTexts.any { it.contains(target) }) {
                 return channel
             }
         }
