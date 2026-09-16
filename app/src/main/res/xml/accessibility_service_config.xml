@@ -5,5 +5,5 @@
     android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
     android:canRetrieveWindowContent="true"
     android:notificationTimeout="100"
-    android:packageNames="org.telegram.messenger,org.telegram.messenger.web,org.telegram.plus,nekox.messenger,tw.nekomimi.nekogram"
+    android:packageNames="org.telegram.messenger,org.telegram.messenger.web,org.telegram.messenger.beta,org.telegram.plus,nekox.messenger,tw.nekomimi.nekogram,org.thunderdog.challegram,org.forkclient.messenger,com.exteragram.messenger,it.owlgram.android,ua.itaysonlab.messenger,top.qwq2333.nullgram,com.cool2645.nekolite,me.ninjagram.messenger,org.ninjagram.messenger,org.telegram.mdgram,org.telegram.mdgramyou,org.telegram.BifToGram,ellipi.messenger,belloworld.mercurygram"
     android:description="@string/accessibility_service_description" />
