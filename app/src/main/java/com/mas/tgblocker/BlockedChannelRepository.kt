@@ -83,7 +83,7 @@ class BlockedChannelRepository(context: Context) {
         val current = getChannels().toMutableList()
         val exists = current.any { existing ->
             existing.type == type && when (type) {
-                ChannelType.USERNAME, ChannelType.KEYWORD -> existing.normalized() == clean.lowercase()
+                ChannelType.USERNAME -> existing.normalized() == clean.lowercase()
                 ChannelType.NAME -> existing.value == clean
             }
         }
