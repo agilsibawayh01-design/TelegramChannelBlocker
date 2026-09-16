@@ -38,7 +38,7 @@ class TelegramBlockAccessibilityService : AccessibilityService() {
         val pkg = event.packageName?.toString() ?: return
         if (pkg !in allowedPackages) return
 
-        if (!repository.isBlockingEnabled()) return
+        if (repository.getMode() == BlockingMode.OFF) return
 
         val root = rootInActiveWindow ?: return
 
