@@ -25,6 +25,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var repository: BlockedChannelRepository
     private lateinit var adapter: ChannelAdapter
+    private var currentMode: BlockingMode = BlockingMode.NORMAL
 
     companion object {
         private const val PENALTY_STEPS = 10
@@ -40,16 +41,13 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
 
         adapter = ChannelAdapter(
-            onEdit = { channel -> showRandomTextGate { showEditDialog(channel) } },
-            onDelete = { channel -> showRandomTextGate { deleteChannel(channel) } }
+            onEdit = { channel -> guardIfStrict { showEditDialog(channel) } },
+            onDelete = { channel -> guardIfStrict { deleteChannel(channel) } }
         )
         binding.rvChannels.layoutManager = LinearLayoutManager(this)
         binding.rvChannels.adapter = adapter
 
-        binding.switchEnabled.isChecked = repository.isBlockingEnabled()
-        binding.switchEnabled.setOnCheckedChangeListener { _, isChecked ->
-            onSwitchToggled(isChecked)
-        }
+        setupModeToggle()
 
         binding.fabAdd.setOnClickListener { showAddDialog() }
 
@@ -109,20 +107,20 @@ class MainActivity : AppCompatActivity() {
         val radioGroup = dialogView.findViewById<android.widget.RadioGroup>(R.id.radioChannelType)
         val tilUsername = dialogView.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.tilUsername)
         radioGroup.setOnCheckedChangeListener { _, checkedId ->
-            tilUsername.hint = if (checkedId == R.id.radioChannelName) {
-                getString(R.string.hint_channel_name)
-            } else {
-                getString(R.string.hint_channel_username)
+            tilUsername.hint = when (checkedId) {
+                R.id.radioChannelName -> getString(R.string.hint_channel_name)
+                R.id.radioKeyword -> getString(R.string.hint_keyword)
+                else -> getString(R.string.hint_channel_username)
             }
         }
     }
 
     private fun selectedType(dialogView: android.view.View): ChannelType {
         val radioGroup = dialogView.findViewById<android.widget.RadioGroup>(R.id.radioChannelType)
-        return if (radioGroup.checkedRadioButtonId == R.id.radioChannelName) {
-            ChannelType.NAME
-        } else {
-            ChannelType.USERNAME
+        return when (radioGroup.checkedRadioButtonId) {
+            R.id.radioChannelName -> ChannelType.NAME
+            R.id.radioKeyword -> ChannelType.KEYWORD
+            else -> ChannelType.USERNAME
         }
     }
 
@@ -156,7 +154,13 @@ class MainActivity : AppCompatActivity() {
         val radioGroup = dialogView.findViewById<android.widget.RadioGroup>(R.id.radioChannelType)
         setupChannelTypeRadio(dialogView)
         etUsername.setText(channel.value)
-        radioGroup.check(if (channel.type == ChannelType.NAME) R.id.radioChannelName else R.id.radioUsername)
+        radioGroup.check(
+            when (channel.type) {
+                ChannelType.NAME -> R.id.radioChannelName
+                ChannelType.KEYWORD -> R.id.radioKeyword
+                ChannelType.USERNAME -> R.id.radioUsername
+            }
+        )
 
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.dialog_edit_title)
@@ -219,24 +223,60 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
-    // ----- Random text gate untuk menonaktifkan pemblokiran -----
-    // Terpisah dari logic Device Admin dan Accessibility di atas.
+    // ----- Mode Mati / Normal / Ketat -----
+    // Naik tingkat (Mati->Normal, Normal->Ketat, Mati->Ketat) bebas, tanpa gate.
+    // Turun dari Ketat (ke Normal atau Mati) WAJIB lewat gate teks acak dulu.
+    // Edit/Hapus channel hanya digate kalau mode saat ini Ketat (lihat guardIfStrict).
 
-    private fun onSwitchToggled(isChecked: Boolean) {
-        if (isChecked) {
-            repository.setBlockingEnabled(true)
-        } else {
-            // Tahan dulu: kembalikan switch ke ON secara visual sampai
-            // pengguna berhasil mengisi teks acak dengan benar.
-            binding.switchEnabled.setOnCheckedChangeListener(null)
-            binding.switchEnabled.isChecked = true
-            binding.switchEnabled.setOnCheckedChangeListener { _, checked -> onSwitchToggled(checked) }
-            showRandomTextGate {
-                binding.switchEnabled.setOnCheckedChangeListener(null)
-                binding.switchEnabled.isChecked = false
-                binding.switchEnabled.setOnCheckedChangeListener { _, checked -> onSwitchToggled(checked) }
-                repository.setBlockingEnabled(false)
+    private fun setupModeToggle() {
+        currentMode = repository.getMode()
+        reflectModeUI(currentMode)
+        binding.toggleMode.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val requestedMode = when (checkedId) {
+                R.id.btnModeOff -> BlockingMode.OFF
+                R.id.btnModeStrict -> BlockingMode.STRICT
+                else -> BlockingMode.NORMAL
             }
+            onModeRequested(requestedMode)
+        }
+    }
+
+    private fun reflectModeUI(mode: BlockingMode) {
+        val id = when (mode) {
+            BlockingMode.OFF -> R.id.btnModeOff
+            BlockingMode.NORMAL -> R.id.btnModeNormal
+            BlockingMode.STRICT -> R.id.btnModeStrict
+        }
+        binding.toggleMode.check(id)
+    }
+
+    private fun onModeRequested(requestedMode: BlockingMode) {
+        if (requestedMode == currentMode) return
+
+        val downgradingFromStrict = currentMode == BlockingMode.STRICT && requestedMode != BlockingMode.STRICT
+        if (downgradingFromStrict) {
+            // Tahan dulu: kembalikan tampilan ke mode saat ini (Ketat) sampai
+            // pengguna berhasil mengisi teks acak dengan benar.
+            reflectModeUI(currentMode)
+            showRandomTextGate {
+                currentMode = requestedMode
+                repository.setMode(requestedMode)
+                reflectModeUI(requestedMode)
+            }
+        } else {
+            currentMode = requestedMode
+            repository.setMode(requestedMode)
+            reflectModeUI(requestedMode)
+        }
+    }
+
+    /** Edit/Hapus channel hanya digate kalau mode saat ini Ketat. */
+    private fun guardIfStrict(action: () -> Unit) {
+        if (currentMode == BlockingMode.STRICT) {
+            showRandomTextGate { action() }
+        } else {
+            action()
         }
     }
 
