@@ -8,6 +8,9 @@
     <string name="service_inactive">Belum aktif</string>
 
     <string name="label_status">Status Pemblokiran</string>
+    <string name="mode_off">Mati</string>
+    <string name="mode_normal">Normal</string>
+    <string name="mode_strict">Ketat</string>
     <string name="label_service">Accessibility Service</string>
     <string name="label_blocked_list">Daftar Channel yang Diblokir</string>
 
