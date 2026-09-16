@@ -107,20 +107,20 @@ class MainActivity : AppCompatActivity() {
         val radioGroup = dialogView.findViewById<android.widget.RadioGroup>(R.id.radioChannelType)
         val tilUsername = dialogView.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.tilUsername)
         radioGroup.setOnCheckedChangeListener { _, checkedId ->
-            tilUsername.hint = when (checkedId) {
-                R.id.radioChannelName -> getString(R.string.hint_channel_name)
-                R.id.radioKeyword -> getString(R.string.hint_keyword)
-                else -> getString(R.string.hint_channel_username)
+            tilUsername.hint = if (checkedId == R.id.radioChannelName) {
+                getString(R.string.hint_channel_name)
+            } else {
+                getString(R.string.hint_channel_username)
             }
         }
     }
 
     private fun selectedType(dialogView: android.view.View): ChannelType {
         val radioGroup = dialogView.findViewById<android.widget.RadioGroup>(R.id.radioChannelType)
-        return when (radioGroup.checkedRadioButtonId) {
-            R.id.radioChannelName -> ChannelType.NAME
-            R.id.radioKeyword -> ChannelType.KEYWORD
-            else -> ChannelType.USERNAME
+        return if (radioGroup.checkedRadioButtonId == R.id.radioChannelName) {
+            ChannelType.NAME
+        } else {
+            ChannelType.USERNAME
         }
     }
 
@@ -154,13 +154,7 @@ class MainActivity : AppCompatActivity() {
         val radioGroup = dialogView.findViewById<android.widget.RadioGroup>(R.id.radioChannelType)
         setupChannelTypeRadio(dialogView)
         etUsername.setText(channel.value)
-        radioGroup.check(
-            when (channel.type) {
-                ChannelType.NAME -> R.id.radioChannelName
-                ChannelType.KEYWORD -> R.id.radioKeyword
-                ChannelType.USERNAME -> R.id.radioUsername
-            }
-        )
+        radioGroup.check(if (channel.type == ChannelType.NAME) R.id.radioChannelName else R.id.radioUsername)
 
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.dialog_edit_title)
